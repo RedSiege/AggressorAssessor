@@ -1,0 +1,14 @@
+on beacon_initial {
+    # Check if logging is enabled
+    blog($1, "Checking for PowerShell transcription");
+    bpowerpick($1, 'if((Get-ItemProperty "HKLM:\SOFTWARE\Wow6432Node\Policies\Microsoft\Windows\PowerShell\Transcription" -ErrorAction SilentlyContinue).EnableTranscription -ne $null) { Write-Output "PowerShell Transcription is enabled!" }');
+
+    blog($1, "Checking for PowerShell invocation header logging");
+    bpowerpick($1, 'if((Get-ItemProperty "HKLM:\SOFTWARE\Wow6432Node\Policies\Microsoft\Windows\PowerShell\Transcription" -ErrorAction SilentlyContinue).EnableInvocationHeader -ne $null) { Write-Output "PowerShell Invocation Header logging is enabled!" }');
+
+    blog($1, "Checking for PowerShell script block logging");
+    bpowerpick($1, 'if((Get-ItemProperty "HKLM:\SOFTWARE\Wow6432Node\Policies\Microsoft\Windows\PowerShell\ScriptBlockLogging" -ErrorAction SilentlyContinue).EnableScriptBlockLogging -ne $null) { Write-Output "PowerShell Script Block Logging is enabled!" }');
+    
+    blog($1, "Checking for PowerShell module logging");
+    bpowerpick($1, 'if((Get-ItemProperty "HKLM:\SOFTWARE\Wow6432Node\Policies\Microsoft\Windows\PowerShell\ModuleLogging" -ErrorAction SilentlyContinue).EnableModuleLogging -ne $null) { Write-Output "PowerShell Module Logging is enabled!" }');
+}
