@@ -3,6 +3,7 @@
 ##############################################################################################################################################################
 
 # Global Variables
+# This code is a modified version of Chris Ross's script - https://github.com/xorrior/RandomPS-Scripts/blob/master/Invoke-ExecuteMSBuild.ps1
 %globalsettings['XMLHead'] = '<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <!-- C:\Windows\Microsoft.NET\Framework64\v4.0.30319\msbuild.exe pshell.xml -->
   <PropertyGroup>';
