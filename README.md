@@ -1,1 +1,1 @@
-Playbooks for CobaltStrick with Aggressor Script (I think -TM)
+Playbooks for CobaltStrike with Aggressor Script (I think -TM)
